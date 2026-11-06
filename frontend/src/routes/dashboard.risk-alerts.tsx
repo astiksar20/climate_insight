@@ -1,54 +1,132 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import { FeatureShell } from "../components/FeatureShell";
-import { AlertTriangle, Droplets, Flame, Wind } from "lucide-react";
+import { useHotspots } from "@/lib/climate/useClimate";
+import { LEVEL_LABEL, LEVEL_RANK, type Level } from "@/lib/climate/analysis";
+import { hazardSvg, LEVEL_COLOR } from "../components/climate/hazardIcons";
+import { LevelPill, SourceTag } from "../components/climate/ui";
+import { RefreshCw } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard/risk-alerts")({
   head: () => ({ meta: [{ title: "Risk Alerts — Bharat Climate Twin" }] }),
   component: RiskAlerts,
 });
 
-const alerts = [
-  { icon: Droplets, level: "High", region: "Assam · Brahmaputra basin", text: "Flood watch — river levels are climbing 8cm an hour. Local authorities have been notified.", color: "amber", time: "12 min ago" },
-  { icon: Flame, level: "Severe", region: "Rajasthan · Vidarbha", text: "Heatwave: daytime highs forecast above 44°C for the next 72 hours. Avoid outdoor work between 11am–4pm.", color: "destructive", time: "1 hr ago" },
-  { icon: Wind, level: "Moderate", region: "Coastal Odisha", text: "Cyclonic circulation building over the Bay of Bengal. Monitoring closely — too early to call a track.", color: "teal", time: "3 hr ago" },
-];
-
-function pill(c: string) {
-  if (c === "destructive") return "bg-destructive/15 text-destructive";
-  if (c === "amber") return "bg-amber-accent/25 text-amber-accent-foreground";
-  return "bg-teal/15 text-teal";
-}
+const HAZARD_NAME: Record<string, string> = {
+  tornado: "Tornado potential",
+  thunder: "Thunderstorm & lightning",
+  hail: "Hailstorm",
+  rain: "Heavy rain",
+  wind: "Squall / strong wind",
+  heat: "Heat",
+  cold: "Cold",
+  fog: "Dense fog",
+  smog: "Air pollution",
+  snow: "Snowfall",
+  calm: "Calm",
+};
 
 function RiskAlerts() {
+  const { hotspots, updated, loading, refresh } = useHotspots();
+  const [minLevel, setMinLevel] = useState<Level>("yellow");
+  const list = useMemo(
+    () =>
+      hotspots
+        .filter((h) => LEVEL_RANK[h.level] >= LEVEL_RANK[minLevel] && h.kind !== "calm")
+        .sort(
+          (a, b) =>
+            LEVEL_RANK[b.level] - LEVEL_RANK[a.level] || b.peak.stormScore - a.peak.stormScore,
+        ),
+    [hotspots, minLevel],
+  );
+  const live = hotspots.filter((h) => h.source !== "synthetic").length;
+
   return (
     <FeatureShell
       eyebrow="Risk Alerts"
       title="What we're watching right now"
-      description="Early signals from the risk pipeline — pulled from satellite, radar and ground stations. The earlier you see it, the more options you have."
+      description="An automatic scan of 81 stations across every state and UT for the next 12 hours: storms building up, tornado ingredients, heavy rain, squalls, heat, cold, fog and smog."
     >
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        {(["yellow", "orange", "red"] as Level[]).map((l) => (
+          <button
+            key={l}
+            onClick={() => setMinLevel(l)}
+            className={`rounded-full px-3 py-1.5 text-xs ${minLevel === l ? "glass-btn shadow-glow" : "text-muted-foreground"}`}
+          >
+            {l === "yellow" ? "All warnings" : l === "orange" ? "Orange & red" : "Red only"}
+          </button>
+        ))}
+        <span className="ml-auto text-[11px] font-mono text-muted-foreground">
+          {updated
+            ? `Updated ${updated.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`
+            : "Scanning…"}{" "}
+          · {live}/{hotspots.length} stations live
+        </span>
+        <button
+          onClick={() => refresh(true)}
+          className="inline-flex items-center gap-1.5 rounded-full glass-btn px-3 py-1.5 text-xs"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Rescan
+        </button>
+      </div>
       <div className="space-y-3">
-        {alerts.map((a) => (
-          <div key={a.region} className="group relative flex items-start gap-4 overflow-hidden rounded-3xl glass-strong p-5 transition-all hover:-translate-y-0.5 hover:shadow-elevated">
-            <div className={`absolute left-0 top-0 h-full w-1 ${a.color === "destructive" ? "bg-destructive" : a.color === "amber" ? "bg-amber-accent" : "bg-teal"}`} />
-            <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${pill(a.color)}`}>
-              <a.icon className="h-5 w-5" />
-            </span>
+        {!loading && list.length === 0 && (
+          <p className="rounded-3xl glass-strong p-6 text-sm text-muted-foreground">
+            No warnings at this level right now.
+          </p>
+        )}
+        {list.map((h) => (
+          <div
+            key={h.city.name}
+            className="group relative flex items-start gap-4 overflow-hidden rounded-3xl glass-strong p-5 transition-all hover:-translate-y-0.5 hover:shadow-elevated"
+          >
+            <div
+              className="absolute left-0 top-0 h-full w-1"
+              style={{ background: LEVEL_COLOR[h.level] }}
+            />
+            <div
+              className={`hz-marker hz-${h.level} ${h.building ? "hz-building" : ""} shrink-0`}
+              style={{ width: 48, height: 48, ["--hz" as string]: LEVEL_COLOR[h.level] }}
+              dangerouslySetInnerHTML={{ __html: hazardSvg(h.kind, h.level) }}
+            />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-widest ${pill(a.color)}`}>
-                  {a.level}
-                </span>
-                <h3 className="font-display text-base font-semibold">{a.region}</h3>
-                <span className="ml-auto text-[11px] font-mono text-muted-foreground">{a.time}</span>
+                <LevelPill level={h.level}>
+                  {h.level} · {LEVEL_LABEL[h.level]}
+                </LevelPill>
+                <h3 className="font-display text-base font-semibold">
+                  {h.city.name} ·{" "}
+                  <span className="font-normal text-muted-foreground">{h.city.state}</span>
+                </h3>
+                <SourceTag src={h.source} />
               </div>
-              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{a.text}</p>
+              <p className="mt-1.5 text-sm">
+                <b>{HAZARD_NAME[h.kind]}:</b> {h.label}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Now {Math.round(h.temp)}°C, feels {Math.round(h.feels)}°C · wind{" "}
+                {Math.round(h.wind)} km/h (gust {Math.round(h.gust)}) · AQI {h.aqi} {h.aqiCat}
+                {h.building && (
+                  <span className="text-orange-500">
+                    {" "}
+                    · ▲ storm building, peak in {h.hoursToPeak} h ({h.peak.stage.toLowerCase()})
+                  </span>
+                )}
+              </p>
             </div>
-            <AlertTriangle className="hidden h-4 w-4 shrink-0 text-muted-foreground sm:block" />
+            <Link
+              to="/dashboard/live-map"
+              className="hidden shrink-0 rounded-full glass-btn px-3 py-1.5 text-xs sm:block"
+            >
+              Open map
+            </Link>
           </div>
         ))}
       </div>
       <p className="mt-6 text-xs text-muted-foreground">
-        Demo data shown. Live ingestion from IMD and ISRO MOSDAC is being wired in.
+        Computed from Open-Meteo NWP and CAMS data, with synthetic fill where a station's data is
+        missing. These are not official warnings; follow IMD and NDMA advisories.
       </p>
     </FeatureShell>
   );

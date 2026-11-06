@@ -20,5 +20,9 @@ export default defineConfig({
   },
   server: {
     port: 8080,
+    // climate API in /backend (npm run dev there); the app falls back to in-browser fetching if it's not running
+    proxy: {
+      "/api": { target: process.env.BACKEND_URL ?? "http://127.0.0.1:8787", changeOrigin: true },
+    },
   },
 });
