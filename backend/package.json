@@ -1,0 +1,17 @@
+{
+  "name": "bharat-climate-twin-backend",
+  "private": true,
+  "type": "module",
+  "description": "Aggregates, cleans and fuses open climate datasets for any point in India.",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "engines": { "node": ">=20" },
+  "devDependencies": {
+    "@types/node": "^22.16.5",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  }
+}
