@@ -9,7 +9,28 @@ climate_insight/
 └── backend/    Node API: aggregates, cleans, fuses and caches the datasets
 ```
 
-## Run it
+## Run with Docker (easiest)
+
+Needs Docker Desktop (Windows/macOS) or Docker Engine + Compose (Linux).
+
+```bash
+docker compose up --build        # first run builds both images (~2–4 min)
+```
+
+- App: <http://localhost:8080/dashboard/live-map>
+- API: <http://localhost:8787/api/health>
+
+Stop with `Ctrl+C` or `docker compose down`. The frontend container proxies `/api` to the backend container, and waits for the backend's health check before starting.
+
+| File | Purpose |
+|---|---|
+| `docker-compose.yml` | runs `backend` (port 8787) + `frontend` (port 8080) |
+| `backend/Dockerfile` | built from the repo root because it shares `frontend/src/lib/climate` |
+| `frontend/Dockerfile` | two-stage: `npm ci` + `vite build`, then serves the SSR app |
+
+To deploy the frontend somewhere the backend lives at a different address, build it with `--build-arg VITE_API_URL=https://api.example.com` (the backend already sends CORS headers).
+
+## Run without Docker
 
 ```bash
 # 1. backend (port 8787)

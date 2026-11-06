@@ -1,0 +1,29 @@
+# Bharat Climate Twin — full stack
+#   docker compose up --build
+# App:  http://localhost:8080/dashboard/live-map
+# API:  http://localhost:8787/api/health
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      PORT: "8787"
+    ports:
+      - "8787:8787"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ""   # empty = same origin; /api is proxied to the backend container
+    environment:
+      BACKEND_URL: http://backend:8787
+    ports:
+      - "8080:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
