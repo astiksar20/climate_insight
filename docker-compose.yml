@@ -1,7 +1,7 @@
 # Bharat Climate Twin — full stack
 #   docker compose up --build
-# App:  http://localhost:8080/dashboard/live-map
-# API:  http://localhost:8787/api/health
+# App:  http://localhost:8080/dashboard/live-map   (change with APP_PORT, e.g. APP_PORT=3000)
+# API:  http://localhost:8787/api/health           (change with API_PORT)
 
 services:
   backend:
@@ -11,7 +11,7 @@ services:
     environment:
       PORT: "8787"
     ports:
-      - "8787:8787"
+      - "${API_PORT:-8787}:8787"
     restart: unless-stopped
 
   frontend:
@@ -22,7 +22,7 @@ services:
     environment:
       BACKEND_URL: http://backend:8787
     ports:
-      - "8080:8080"
+      - "${APP_PORT:-8080}:8080"
     depends_on:
       backend:
         condition: service_healthy

@@ -20,7 +20,9 @@ docker compose up --build        # first run builds both images (~2–4 min)
 - App: <http://localhost:8080/dashboard/live-map>
 - API: <http://localhost:8787/api/health>
 
-Stop with `Ctrl+C` or `docker compose down`. The frontend container proxies `/api` to the backend container, and waits for the backend's health check before starting.
+Stop with `Ctrl+C` or `docker compose down`.
+
+Port 8080 already used by another app? Pick another one: create a `.env` file next to `docker-compose.yml` containing `APP_PORT=3000` (and/or `API_PORT=8788`), then open `http://localhost:3000`. The frontend container proxies `/api` to the backend container, and waits for the backend's health check before starting.
 
 | File | Purpose |
 |---|---|
